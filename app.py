@@ -220,15 +220,6 @@ st.download_button(
     mime="text/csv"
 )
 
-if fi is not None:
-    fi_csv = fi.to_csv(index=False).encode("utf-8")
-    st.download_button(
-        "Download rf_feature_importance.csv",
-        fi_csv,
-        file_name="rf_feature_importance.csv",
-        mime="text/csv"
-    )
-
 # tambahan: download forecast (kalau ada)
 if fc_all is not None:
     fc_csv = fc_all.to_csv(index=False).encode("utf-8")
@@ -238,5 +229,6 @@ if fc_all is not None:
         file_name="forecast_2026_2030.csv",
         mime="text/csv"
     )
+
 
 
