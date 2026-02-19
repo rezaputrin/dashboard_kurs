@@ -1,9 +1,9 @@
-import streamlit as st
-import pandas as pd
-import plotly.express as px
 from pathlib import Path
 import numpy as np
 import pmdarima as pm
+import streamlit as st
+import pandas as pd
+import plotly.express as px
 
 st.set_page_config(page_title="Dashboard Prediksi USD/IDR", layout="wide")
 
@@ -30,6 +30,29 @@ except:
 
 df = to_datetime(df, "date")
 pred = to_datetime(pred, "date")
+
+# === Load ARIMA model (pmdarima) untuk forecast masa depan ===
+BASE_DIR = Path(__file__).resolve().parent
+MODEL_PATH = BASE_DIR / "model" / "arima_full_pmdarima.pkl"
+
+@st.cache_resource
+def load_arima_model(path: Path):
+    return pm.load(path)
+
+# Jika model tidak ditemukan, tampilkan pesan yang jelas
+if not MODEL_PATH.exists():
+    st.error(f"File model tidak ditemukan: {MODEL_PATH}")
+    st.info("Pastikan file ada di repo GitHub pada folder: model/arima_full_pmdarima.pkl")
+    st.stop()
+
+arima_full = load_arima_model(MODEL_PATH)
+
+# Test cepat: memastikan model bisa dipakai predict
+try:
+    _fc, _conf = arima_full.predict(n_periods=3, return_conf_int=True)
+except Exception as e:
+    st.error(f"Model ARIMA berhasil diload tetapi gagal melakukan predict: {e}")
+    st.stop()
 
 # === Sidebar ===
 st.sidebar.header("Pengaturan")
@@ -111,7 +134,63 @@ with st.expander("Lihat tabel prediksi (data uji)"):
 
 st.divider()
 
-# === Section 4: Feature Importance (opsional) ===
+# === Section 4: Forecast 2026–2030 (ARIMA) ===
+st.subheader("Forecast USD/IDR 2026–2030 (ARIMA Out-of-sample)")
+
+years_ahead = st.slider("Horizon prediksi (tahun)", 1, 5, 5)
+steps = years_ahead * 12
+
+# tanggal terakhir historis
+last_date = df["date"].max()
+
+# buat tanggal masa depan bulanan
+future_dates = pd.date_range(
+    last_date + pd.offsets.MonthBegin(1),
+    periods=steps,
+    freq="MS"
+)
+
+# forecast + interval prediksi
+fc, conf = arima_full.predict(n_periods=steps, return_conf_int=True)
+
+forecast_df = pd.DataFrame({
+    "date": future_dates,
+    "forecast": fc,
+    "lower": conf[:, 0],
+    "upper": conf[:, 1]
+})
+
+# Plot: historis + forecast
+hist_plot = df[["date", "mid_rate_monthly_mean"]].rename(columns={"mid_rate_monthly_mean": "value"})
+hist_plot["series"] = "Historis"
+
+fc_plot = forecast_df[["date", "forecast"]].rename(columns={"forecast": "value"})
+fc_plot["series"] = "Forecast ARIMA"
+
+combined = pd.concat([hist_plot, fc_plot], ignore_index=True)
+
+fig_fc = px.line(
+    combined,
+    x="date",
+    y="value",
+    color="series",
+    title="Historis vs Forecast ARIMA"
+)
+st.plotly_chart(fig_fc, use_container_width=True)
+
+with st.expander("Lihat tabel forecast + interval prediksi (lower–upper)"):
+    st.dataframe(forecast_df, use_container_width=True)
+
+st.download_button(
+    "Download forecast.csv",
+    forecast_df.to_csv(index=False).encode("utf-8"),
+    file_name=f"forecast_{years_ahead}tahun.csv",
+    mime="text/csv"
+)
+
+st.divider()
+
+# === Section 5: Feature Importance (opsional) ===
 st.subheader("Feature Importance Random Forest (Opsional)")
 
 if fi is None:
@@ -128,7 +207,7 @@ else:
 
 st.divider()
 
-# === Section 5: Download ===
+# === Section 6: Download ===
 st.subheader("Unduh Output")
 
 pred_csv = pred.to_csv(index=False).encode("utf-8")
@@ -141,3 +220,4 @@ if fi is not None:
     fi_csv = fi.to_csv(index=False).encode("utf-8")
 
     st.download_button("Download rf_feature_importance.csv", fi_csv, file_name="rf_feature_importance.csv", mime="text/csv")
+
