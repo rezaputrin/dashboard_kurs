@@ -200,32 +200,7 @@ else:
 st.divider()
 
 # =========================================================
-# SECTION 5: FEATURE IMPORTANCE (OPTIONAL)
-# =========================================================
-st.subheader("Feature Importance Random Forest (Opsional)")
-
-if fi is None:
-    st.info("File rf_feature_importance.csv belum ada / tidak dimuat.")
-else:
-    if not {"feature", "importance"}.issubset(set(fi.columns)):
-        st.warning("Format rf_feature_importance.csv harus punya kolom: feature, importance")
-    else:
-        top_n = st.slider("Tampilkan Top-N fitur", min_value=5, max_value=25, value=12)
-        fi_sorted = fi.sort_values("importance", ascending=False).head(top_n)
-
-        fig_fi = px.bar(
-            fi_sorted,
-            x="importance",
-            y="feature",
-            orientation="h",
-            title=f"Top-{top_n} Feature Importance"
-        )
-        st.plotly_chart(fig_fi, use_container_width=True)
-
-st.divider()
-
-# =========================================================
-# SECTION 6: DOWNLOAD OUTPUT
+# SECTION 5: DOWNLOAD OUTPUT
 # =========================================================
 st.subheader("Unduh Output")
 
@@ -263,4 +238,5 @@ if fc_all is not None:
         file_name="forecast_2026_2030.csv",
         mime="text/csv"
     )
+
 
