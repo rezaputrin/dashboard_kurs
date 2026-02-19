@@ -29,12 +29,6 @@ df = load_csv("data/dataset_final_kurs_midrate_m2_policyrate_monthly_2015_2025.c
 pred = load_csv("data/predictions_test.csv")
 met = load_csv("data/metrics.csv")
 
-# optional
-try:
-    fi = load_csv("data/rf_feature_importance.csv")
-except Exception:
-    fi = None
-
 # optional forecast csv (SOLUSI 1)
 try:
     fc_all = load_csv("data/forecast_2026_2030.csv")
@@ -269,3 +263,4 @@ if fc_all is not None:
         file_name="forecast_2026_2030.csv",
         mime="text/csv"
     )
+
